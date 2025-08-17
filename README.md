@@ -27,7 +27,7 @@ pip install -r requirements.txt
 To start the Streamlit application, navigate to the `src` directory and run the following command:
 
 ```
-streamlit run app.py
+streamlit run app/src/app.py
 ```
 
 Once the application is running, you can upload a CSV file using the provided interface, and the data will be displayed in a table format.
