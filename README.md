@@ -5,7 +5,7 @@ This project is a simple Streamlit application that allows users to upload a CSV
 ## Project Structure
 
 ```
-streamlit-csv-uploader
+app
 ├── src
 │   ├── app.py
 │   └── utils
@@ -37,7 +37,7 @@ Once the application is running, you can upload a CSV file using the provided in
 - Upload and preview CSV files in a tabular format.
 - Select a data quality dimension to assess via a dropdown:
   - **Completeness** (officially ready)
-  - Uniqueness
+  - **Uniqueness** (officially ready)
   - Accuracy
   - Timeliness
   - Consistency

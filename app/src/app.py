@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.csv_utils import read_csv, check_completeness
+from utils.csv_utils import read_csv, check_completeness, check_uniqueness
 
 DIMENSIONS = [
     "Completeness",
@@ -12,7 +12,7 @@ DIMENSIONS = [
 ]
 
 def main():
-    st.title("CSV Upload & Data Quality Assessment")
+    st.title("Data Quality Assessment")
     st.subheader("Upload a CSV file to view its contents and assess data quality dimensions")
     
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
@@ -33,7 +33,16 @@ def main():
             st.subheader("Data Completeness by Column (%)")
             st.dataframe(completeness_df)
             st.bar_chart(
-                data=completeness_df.set_index('column')['completeness_percent']
+                data=completeness_df.set_index('column')['completeness_percent'],
+                horizontal=True
+            )
+        elif dimension == "Uniqueness":
+            uniqueness_df = check_uniqueness(data)
+            st.subheader("Data Uniqueness by Column (%)")
+            st.dataframe(uniqueness_df)
+            st.bar_chart(
+                data=uniqueness_df.set_index('column')['uniqueness_percent'],
+                horizontal=True
             )
         else:
             st.info(f"Assessment for '{dimension}' is not implemented yet.")

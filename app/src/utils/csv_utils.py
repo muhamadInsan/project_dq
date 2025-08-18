@@ -27,3 +27,13 @@ def check_completeness(df):
         'column': completeness.index,
         'completeness_percent': completeness.values
     })
+
+def check_uniqueness(df):
+    """
+    Returns a DataFrame with columns: ['column', 'uniqueness_percent']
+    """
+    uniqueness = df.nunique(dropna=False) / len(df) * 100 if len(df) > 0 else 0
+    return pd.DataFrame({
+        'column': uniqueness.index,
+        'uniqueness_percent': uniqueness.values
+    })
