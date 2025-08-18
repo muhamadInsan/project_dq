@@ -34,10 +34,20 @@ Once the application is running, you can upload a CSV file using the provided in
 
 ## Features
 
-- Upload CSV files
-- Display data in a user-friendly table
-- Simple and intuitive interface
+- Upload and preview CSV files in a tabular format.
+- Select a data quality dimension to assess via a dropdown:
+  - **Completeness** (officially ready)
+  - Uniqueness
+  - Accuracy
+  - Timeliness
+  - Consistency
+  - Validity
+- Visualize column completeness as a table and bar chart.
 
-## License
+## How to Run
 
-This project is open-source and available under the MIT License.
+rom the project root, run:
+
+```
+streamlit run app/src/app.py
+```
