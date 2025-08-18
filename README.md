@@ -1,4 +1,4 @@
-# Streamlit CSV Uploader
+# Streamlit Project Data Quality
 
 This project is a simple Streamlit application that allows users to upload a CSV file and display its contents in a tabular format. 
 
