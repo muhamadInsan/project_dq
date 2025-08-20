@@ -37,3 +37,21 @@ def check_uniqueness(df):
         'column': uniqueness.index,
         'uniqueness_percent': uniqueness.values
     })
+
+def check_timeliness(df, date_columns, threshold_days=3000):
+    """
+    Assess timeliness for given date columns.
+    Returns DataFrame with columns: ['column', 'timeliness_percent']
+    Timeliness is the percent of rows where the date is within threshold_days from today.
+    """
+    results = []
+    today = pd.Timestamp.today()
+    for col in date_columns:
+        try:
+            dates = pd.to_datetime(df[col], errors='coerce')
+            timely = ((today - dates).dt.days <= threshold_days).sum()
+            percent = timely / len(df) * 100 if len(df) > 0 else 0
+        except Exception:
+            percent = 0
+        results.append({'column': col, 'timeliness_percent': percent})
+    return pd.DataFrame(results)
