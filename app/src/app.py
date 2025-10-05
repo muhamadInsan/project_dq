@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.csv_utils import read_csv, check_completeness, check_uniqueness, check_timeliness
+from utils.csv_utils import read_csv, check_completeness, check_uniqueness, check_timeliness, check_validity
 
 st.set_page_config(layout="wide")  # Set layout to wide
 
@@ -44,95 +44,146 @@ def data_quality_page():
         data = read_csv(uploaded_file)
         st.write("Data from the CSV file:")
         st.dataframe(data)
-
-        # Show shape info and top 5 rows
         st.info(f"Table shape: {data.shape[0]} rows × {data.shape[1]} columns")
 
-        # Calculate summary for available dimensions
-        completeness_df = check_completeness(data)
-        uniqueness_df = check_uniqueness(data)
-        # Timeliness summary: auto-select date columns and get mean timeliness
-        date_columns = [
-            col for col in data.columns
-            if pd.api.types.is_datetime64_any_dtype(data[col]) or
-               pd.to_datetime(data[col], errors='coerce').notna().sum() > 0
-        ]
-        if date_columns:
-            timeliness_df = check_timeliness(data, date_columns)
-            timeliness_mean = timeliness_df['timeliness_percent'].mean()
-        else:
-            timeliness_mean = 0
+        tabs = st.tabs(DIMENSIONS)
 
-        summary = {
-            "Completeness": completeness_df['completeness_percent'].mean(),
-            "Uniqueness": uniqueness_df['uniqueness_percent'].mean(),
-            "Accuracy": 0,
-            "Timeliness": timeliness_mean,
-            "Consistency": 0,
-            "Validity": 0
-        }
-        summary_df = pd.DataFrame(list(summary.items()), columns=["Dimension", "Mean %"])
-
-        st.subheader("Summary of Data Quality Dimensions (%)")
-        st.bar_chart(data=summary_df.set_index("Dimension")["Mean %"])
-
-        # Dropdown for data quality dimension
-        dimension = st.selectbox(
-            "Select Data Quality Dimension to Assess",
-            DIMENSIONS
-        )
-
-        # Dropdown for column selection (allow multiple columns, add "Select All" option)
-        if dimension in ["Completeness", "Uniqueness", "Timeliness"]:
-            all_columns = list(data.columns)
-            # For timeliness, auto-select columns with date dtype or date-like values
-            if dimension == "Timeliness":
-                date_columns = [
-                    col for col in all_columns
-                    if pd.api.types.is_datetime64_any_dtype(data[col]) or
-                       pd.to_datetime(data[col], errors='coerce').notna().sum() > 0
-                ]
-                columns = st.multiselect(
-                    f"Select column(s) to assess {dimension.lower()}",
-                    ["[Select All]"] + date_columns,
-                    default=date_columns if date_columns else []
-                )
-                if "[Select All]" in columns:
-                    selected_columns = date_columns
-                else:
-                    selected_columns = columns
-            else:
-                columns = st.multiselect(
-                    f"Select column(s) to assess {dimension.lower()}",
-                    ["[Select All]"] + all_columns,
-                    default=["[Select All]"]
-                )
-                if "[Select All]" in columns:
-                    selected_columns = all_columns
-                else:
-                    selected_columns = columns
-
+        # Completeness Tab
+        with tabs[0]:
+            st.header("Completeness")
+            completeness_df = check_completeness(data)
+            columns = st.multiselect(
+                "Select column(s) to assess completeness",
+                ["[Select All]"] + list(data.columns),
+                default=["[Select All]"]
+            )
+            selected_columns = list(data.columns) if "[Select All]" in columns else columns
             if selected_columns:
-                if dimension == "Completeness":
-                    selected_df = completeness_df[completeness_df['column'].isin(selected_columns)]
-                    st.subheader(f"Completeness for selected columns")
-                    st.dataframe(selected_df)
-                    st.bar_chart(selected_df.set_index('column')['completeness_percent'])
-                elif dimension == "Uniqueness":
-                    selected_df = uniqueness_df[uniqueness_df['column'].isin(selected_columns)]
-                    st.subheader(f"Uniqueness for selected columns")
-                    st.dataframe(selected_df)
-                    st.bar_chart(selected_df.set_index('column')['uniqueness_percent'])
-                elif dimension == "Timeliness":
-                    st.info("Timeliness assesses how recent the dates are in selected columns (default threshold: 30 days).")
-                    timeliness_df = check_timeliness(data, selected_columns)
-                    st.subheader(f"Timeliness for selected columns")
-                    st.dataframe(timeliness_df)
-                    st.bar_chart(timeliness_df.set_index('column')['timeliness_percent'])
+                selected_df = completeness_df[completeness_df['column'].isin(selected_columns)]
+                st.dataframe(selected_df)
+                st.bar_chart(selected_df.set_index('column')['completeness_percent'])
+                summary_data = []
+                total_rows = len(data)
+                for idx, row in selected_df.iterrows():
+                    col = row['column']
+                    percent = row['completeness_percent']
+                    failed_percent = 100 - percent
+                    passed_rows = int(total_rows * percent / 100)
+                    failed_rows = total_rows - passed_rows
+                    summary_data.append({
+                        "Column": col,
+                        "Passed (%)": f"{percent:.2f}",
+                        "Failed (%)": f"{failed_percent:.2f}",
+                        "Rows Passed": passed_rows,
+                        "Rows Failed": failed_rows
+                    })
+                st.markdown("##### Completeness Detail: Data Presence Breakdown")
+                st.table(pd.DataFrame(summary_data))
             else:
                 st.info("Please select at least one column to assess.")
-        else:
-            st.info(f"Assessment for '{dimension}' is not implemented yet.")
+
+        # Uniqueness Tab
+        with tabs[1]:
+            st.header("Uniqueness")
+            uniqueness_df = check_uniqueness(data)
+            columns = st.multiselect(
+                "Select column(s) to assess uniqueness",
+                ["[Select All]"] + list(data.columns),
+                default=["[Select All]"]
+            )
+            selected_columns = list(data.columns) if "[Select All]" in columns else columns
+            if selected_columns:
+                selected_df = uniqueness_df[uniqueness_df['column'].isin(selected_columns)]
+                st.dataframe(selected_df)
+                st.bar_chart(selected_df.set_index('column')['uniqueness_percent'])
+                summary_data = []
+                total_rows = len(data)
+                for idx, row in selected_df.iterrows():
+                    col = row['column']
+                    percent = row['uniqueness_percent']
+                    failed_percent = 100 - percent
+                    passed_rows = int(total_rows * percent / 100)
+                    failed_rows = total_rows - passed_rows
+                    summary_data.append({
+                        "Column": col,
+                        "Passed (%)": f"{percent:.2f}",
+                        "Failed (%)": f"{failed_percent:.2f}",
+                        "Rows Passed": passed_rows,
+                        "Rows Failed": failed_rows
+                    })
+                st.markdown("##### Uniqueness Detail: Duplicate Data Breakdown")
+                st.table(pd.DataFrame(summary_data))
+            else:
+                st.info("Please select at least one column to assess.")
+
+        # Accuracy Tab
+        with tabs[2]:
+            st.header("Accuracy")
+            st.info("Accuracy assessment is not implemented yet.")
+
+        # Timeliness Tab
+        with tabs[3]:
+            st.header("Timeliness")
+            st.info("Timeliness assessment is not implemented yet.")
+
+        # Consistency Tab
+        with tabs[4]:
+            st.header("Consistency")
+            st.info("Consistency assessment is not implemented yet.")
+
+        # Validity Tab
+        with tabs[5]:
+            st.header("Validity")
+            columns = st.multiselect(
+                "Select column(s) to assess validity",
+                ["[Select All]"] + list(data.columns),
+                default=["[Select All]"]
+            )
+            selected_columns = list(data.columns) if "[Select All]" in columns else columns
+            validity_column = st.selectbox("Select column to check validity", selected_columns)
+            validity_condition = st.selectbox(
+                "Select validity condition",
+                ["equal", "min", "max", "in", "between", "regex"]
+            )
+            if validity_condition == "between":
+                val1 = st.text_input("Minimum value")
+                val2 = st.text_input("Maximum value")
+                try:
+                    val1 = float(val1)
+                    val2 = float(val2)
+                    validity_value = [val1, val2]
+                except:
+                    validity_value = [val1, val2]
+            elif validity_condition == "in":
+                validity_value = st.text_input("List of valid values (comma separated)").split(",")
+                validity_value = [v.strip() for v in validity_value]
+            elif validity_condition == "regex":
+                validity_value = st.text_input(
+                    "Regex pattern (e.g. ^[A-Za-z0-9]+$ for alphanumeric, ^\\d+$ for digits, ^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$ for email)"
+                )
+            else:
+                validity_value = st.text_input("Value for validity check")
+                try:
+                    validity_value = float(validity_value)
+                except:
+                    pass
+            if st.button("Check Validity", key="validity_btn"):
+                percent = check_validity(data, validity_column, validity_condition, validity_value)
+                total_rows = len(data)
+                passed_rows = int(total_rows * percent / 100)
+                failed_rows = total_rows - passed_rows
+                summary_data = [{
+                    "Column": validity_column,
+                    "Passed (%)": f"{percent:.2f}",
+                    "Failed (%)": f"{100 - percent:.2f}",
+                    "Rows Passed": passed_rows,
+                    "Rows Failed": failed_rows
+                }]
+                st.success(f"Validity for column '{validity_column}' with condition '{validity_condition}': {percent:.2f}%")
+                st.markdown("##### Validity Detail: Data Format & Rule Breakdown")
+                st.table(pd.DataFrame(summary_data))
+    else:
+        st.info("Please upload a CSV file to get started.")
 
 def main():
     if "page" not in st.session_state:

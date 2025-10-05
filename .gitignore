@@ -1,2 +1,4 @@
 # Ignore Python virtual
 env_dq/
+data/
+playground.ipynb
